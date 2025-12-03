@@ -31,6 +31,9 @@ app.use(cors());
 app.use(helmet());
 app.use(morgan("dev"));
 
+// Swagger docs - must be BEFORE DB middleware (doesn't need DB)
+swaggerDocs(app);
+
 // Middleware to ensure DB connection before API routes
 app.use("/api", async (req, res, next) => {
   try {
@@ -47,9 +50,6 @@ app.use("/api", async (req, res, next) => {
 
 app.use("/api/v1/playlists", playlistRoutes);
 app.use("/api/v1/songs", songRoutes);
-
-// Swagger - must be after middleware but before error handler
-swaggerDocs(app);
 
 // Error Handler (after all routes)
 app.use(errorHandler);

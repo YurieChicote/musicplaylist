@@ -54,19 +54,19 @@ export const swaggerDocs = (app, port = 3000) => {
 
   const specs = swaggerJsdoc(options);
   
-  // Swagger UI setup for Vercel - handle both serve and setup
+  // Swagger UI setup for Vercel
   const swaggerUiOptions = {
     customCss: '.swagger-ui .topbar { display: none }',
     customSiteTitle: "Music Playlist API Documentation",
-    customCssUrl: null, // Disable external CSS
     swaggerOptions: {
       persistAuthorization: true,
-      displayRequestDuration: true
+      displayRequestDuration: true,
+      tryItOutEnabled: true
     }
   };
   
-  app.use("/api-docs", swaggerUi.serve);
-  app.get("/api-docs", swaggerUi.setup(specs, swaggerUiOptions));
+  // Setup Swagger UI routes
+  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs, swaggerUiOptions));
   
   console.log(`Swagger docs available at /api-docs`);
 };
