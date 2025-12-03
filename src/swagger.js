@@ -9,45 +9,64 @@ export const swaggerDocs = (app, port = 3000) => {
         title: "Music Playlist API",
         version: "1.0.0",
         description: "API for managing playlists and songs",
+        contact: {
+          name: "API Support"
+        }
       },
+      servers: [
+        {
+          url: process.env.VERCEL_URL 
+            ? `https://${process.env.VERCEL_URL}` 
+            : `http://localhost:${port}`,
+          description: process.env.VERCEL_URL ? "Production server" : "Development server"
+        }
+      ],
       components: {
         schemas: {
           // Define the Playlist schema
           Playlist: {
             type: "object",
-            required: ["name"], // You can adjust the required fields
+            required: ["name"],
             properties: {
-              name: { type: "string" },
-              description: { type: "string" },
+              name: { type: "string", example: "My Favorite Songs" },
+              description: { type: "string", example: "Best playlist ever" },
               songs: {
                 type: "array",
-                items: { $ref: "#/components/schemas/Song" } // Reference the Song schema
+                items: { $ref: "#/components/schemas/Song" }
               },
             }
           },
           // Define the Song schema
           Song: {
             type: "object",
-            required: ["title", "artist"], // Adjust required fields as needed
+            required: ["title", "artist"],
             properties: {
-              title: { type: "string" },
-              artist: { type: "string" },
-              duration: { type: "string" },  // You can use string or number for duration
+              title: { type: "string", example: "Never Say Never" },
+              artist: { type: "string", example: "Justin Bieber" },
+              duration: { type: "string", example: "3:45" }
             }
           }
         }
       }
     },
-    apis: ["./src/routes/*.js"], // <-- path to your routes
+    apis: ["./src/routes/*.js"],
   };
 
   const specs = swaggerJsdoc(options);
   
-  // Swagger UI setup for Vercel
-  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs, {
+  // Swagger UI setup for Vercel - handle both serve and setup
+  const swaggerUiOptions = {
     customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: "Music Playlist API Documentation"
-  }));
+    customSiteTitle: "Music Playlist API Documentation",
+    customCssUrl: null, // Disable external CSS
+    swaggerOptions: {
+      persistAuthorization: true,
+      displayRequestDuration: true
+    }
+  };
+  
+  app.use("/api-docs", swaggerUi.serve);
+  app.get("/api-docs", swaggerUi.setup(specs, swaggerUiOptions));
   
   console.log(`Swagger docs available at /api-docs`);
 };
