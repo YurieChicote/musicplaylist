@@ -13,9 +13,13 @@ const router = express.Router();
  *       200:
  *         description: List of all songs
  */
-router.get("/", async (req, res) => {
-  const songs = await Song.find();
-  res.json(songs);
+router.get("/", async (req, res, next) => {
+  try {
+    const songs = await Song.find();
+    res.json(songs);
+  } catch (error) {
+    next(error);
+  }
 });
 
 /**

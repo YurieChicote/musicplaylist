@@ -14,9 +14,13 @@ const router = express.Router();
  *       200:
  *         description: List of all playlists
  */
-router.get("/", async (req, res) => {
-  const playlists = await Playlist.find().populate("songs");
-  res.json(playlists);
+router.get("/", async (req, res, next) => {
+  try {
+    const playlists = await Playlist.find().populate("songs");
+    res.json(playlists);
+  } catch (error) {
+    next(error);
+  }
 });
 
 /**
