@@ -42,6 +42,12 @@ export const swaggerDocs = (app, port = 3000) => {
   };
 
   const specs = swaggerJsdoc(options);
-  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
-  console.log(`Swagger docs available at http://localhost:${port}/api-docs`);
+  
+  // Swagger UI setup for Vercel
+  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: "Music Playlist API Documentation"
+  }));
+  
+  console.log(`Swagger docs available at /api-docs`);
 };

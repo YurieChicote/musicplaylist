@@ -26,22 +26,29 @@ app.get("/", (req, res) => {
   });
 });
 
-// Initialize DB connection (non-blocking - won't prevent app from starting)
-// Connection will be established on first request that needs it
-connectDB().catch((err) => {
-  console.error("Failed to connect to MongoDB on startup:", err.message);
-  // Don't throw - let the app start and handle DB errors per-request
-});
-
 app.use(express.json());
 app.use(cors());
 app.use(helmet());
 app.use(morgan("dev"));
 
+// Middleware to ensure DB connection before API routes
+app.use("/api", async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    console.error("Database connection failed:", error.message);
+    res.status(500).json({ 
+      message: "Database connection failed",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 app.use("/api/v1/playlists", playlistRoutes);
 app.use("/api/v1/songs", songRoutes);
 
-// Swagger
+// Swagger - must be after middleware but before error handler
 swaggerDocs(app);
 
 // Error Handler (after all routes)
