@@ -35,7 +35,21 @@ app.get("/", (req, res) => {
 
 app.use(express.json());
 app.use(cors());
-app.use(helmet());
+
+// Configure Helmet with CSP that allows Swagger UI
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'", "https://unpkg.com"],
+    },
+  },
+}));
+
 app.use(morgan("dev"));
 
 // Swagger docs - must be BEFORE DB middleware (doesn't need DB)
