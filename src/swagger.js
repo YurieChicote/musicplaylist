@@ -2,6 +2,19 @@ import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 
 export const swaggerDocs = (app, port = 3000) => {
+  // Get the base URL for Vercel
+  const getBaseUrl = () => {
+    if (process.env.VERCEL_URL) {
+      return `https://${process.env.VERCEL_URL}`;
+    }
+    if (process.env.VERCEL) {
+      return `https://musicplaylist-seven.vercel.app`;
+    }
+    return `http://localhost:${port}`;
+  };
+
+  const baseUrl = getBaseUrl();
+
   const options = {
     definition: {
       openapi: "3.0.0",
@@ -15,10 +28,8 @@ export const swaggerDocs = (app, port = 3000) => {
       },
       servers: [
         {
-          url: process.env.VERCEL_URL 
-            ? `https://${process.env.VERCEL_URL}` 
-            : `http://localhost:${port}`,
-          description: process.env.VERCEL_URL ? "Production server" : "Development server"
+          url: baseUrl,
+          description: process.env.VERCEL || process.env.VERCEL_URL ? "Production server" : "Development server"
         }
       ],
       components: {
@@ -54,19 +65,31 @@ export const swaggerDocs = (app, port = 3000) => {
 
   const specs = swaggerJsdoc(options);
   
-  // Swagger UI setup for Vercel
+  // Swagger UI setup for Vercel - handle both serve and setup
   const swaggerUiOptions = {
     customCss: '.swagger-ui .topbar { display: none }',
     customSiteTitle: "Music Playlist API Documentation",
+    customCssUrl: null, // Disable external CSS
     swaggerOptions: {
       persistAuthorization: true,
-      displayRequestDuration: true,
-      tryItOutEnabled: true
+      displayRequestDuration: true
     }
   };
   
-  // Setup Swagger UI routes
-  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs, swaggerUiOptions));
+  // Serve Swagger UI static files - separate middleware for Vercel compatibility
+  app.use("/api-docs", swaggerUi.serve);
+  app.get("/api-docs", swaggerUi.setup(specs, swaggerUiOptions));
   
-  console.log(`Swagger docs available at /api-docs`);
+  // Handle trailing slash redirect
+  app.get("/api-docs/", (req, res) => {
+    res.redirect("/api-docs");
+  });
+  
+  // Also serve the JSON spec directly
+  app.get("/api-docs/swagger.json", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.send(specs);
+  });
+  
+  console.log(`Swagger docs available at ${baseUrl}/api-docs`);
 };

@@ -16,13 +16,20 @@ const app = express();
 
 // Root Route - Adding root endpoint to avoid 404 errors
 app.get("/", (req, res) => {
+  const baseUrl = process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}` 
+    : process.env.VERCEL
+    ? "https://musicplaylist-seven.vercel.app"
+    : `http://localhost:${process.env.PORT || 3000}`;
+    
   res.json({ 
     message: "Welcome to the Music Playlist API",
     endpoints: {
       playlists: "/api/v1/playlists",
       songs: "/api/v1/songs",
-      docs: "/api-docs"
-    }
+      docs: `${baseUrl}/api-docs`
+    },
+    note: "Access API documentation at /api-docs (not /api-docs-)"
   });
 });
 
