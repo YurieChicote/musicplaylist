@@ -65,31 +65,86 @@ export const swaggerDocs = (app, port = 3000) => {
 
   const specs = swaggerJsdoc(options);
   
-  // Swagger UI setup for Vercel - handle both serve and setup
-  const swaggerUiOptions = {
-    customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: "Music Playlist API Documentation",
-    customCssUrl: null, // Disable external CSS
-    swaggerOptions: {
-      persistAuthorization: true,
-      displayRequestDuration: true
-    }
-  };
+  // Serve the JSON spec first (needed for HTML page)
+  app.get("/api-docs/swagger.json", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.send(specs);
+  });
   
-  // Serve Swagger UI static files - separate middleware for Vercel compatibility
-  app.use("/api-docs", swaggerUi.serve);
-  app.get("/api-docs", swaggerUi.setup(specs, swaggerUiOptions));
+  // For Vercel: Serve HTML page with Swagger UI from CDN
+  app.get("/api-docs", (req, res) => {
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Music Playlist API Documentation</title>
+  <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui.css" />
+  <style>
+    html {
+      box-sizing: border-box;
+      overflow: -moz-scrollbars-vertical;
+      overflow-y: scroll;
+    }
+    *, *:before, *:after {
+      box-sizing: inherit;
+    }
+    body {
+      margin:0;
+      background: #fafafa;
+    }
+    .swagger-ui .topbar {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-bundle.js"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-standalone-preset.js"></script>
+  <script>
+    window.onload = function() {
+      const ui = SwaggerUIBundle({
+        url: "${baseUrl}/api-docs/swagger.json",
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        plugins: [
+          SwaggerUIBundle.plugins.DownloadUrl
+        ],
+        layout: "StandaloneLayout",
+        persistAuthorization: true
+      });
+    };
+  </script>
+</body>
+</html>`;
+    res.setHeader("Content-Type", "text/html");
+    res.send(html);
+  });
   
   // Handle trailing slash redirect
   app.get("/api-docs/", (req, res) => {
     res.redirect("/api-docs");
   });
   
-  // Also serve the JSON spec directly
-  app.get("/api-docs/swagger.json", (req, res) => {
-    res.setHeader("Content-Type", "application/json");
-    res.send(specs);
-  });
+  // Fallback: Try to use swagger-ui-express for local development
+  if (!process.env.VERCEL && !process.env.VERCEL_URL) {
+    const swaggerUiOptions = {
+      customCss: '.swagger-ui .topbar { display: none }',
+      customSiteTitle: "Music Playlist API Documentation",
+      swaggerOptions: {
+        persistAuthorization: true,
+        displayRequestDuration: true
+      }
+    };
+    app.use("/api-docs", swaggerUi.serve);
+    app.get("/api-docs", swaggerUi.setup(specs, swaggerUiOptions));
+  }
   
   console.log(`Swagger docs available at ${baseUrl}/api-docs`);
 };
