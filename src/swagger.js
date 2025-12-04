@@ -2,8 +2,18 @@ import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 
 export const swaggerDocs = (app, port = 3000) => {
-  // Get the base URL for Vercel
-  const getBaseUrl = () => {
+  // Get the base URL from request or environment
+  const getBaseUrl = (req) => {
+    // Use the request's host header to get the actual domain being accessed
+    if (req && req.headers && req.headers.host) {
+      const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+      return `${protocol}://${req.headers.host}`;
+    }
+    // Fallback to environment variables
+    if (process.env.VERCEL_URL && !process.env.VERCEL_URL.includes('musicplaylist-seven')) {
+      // If it's a preview deployment, use production URL
+      return `https://musicplaylist-seven.vercel.app`;
+    }
     if (process.env.VERCEL_URL) {
       return `https://${process.env.VERCEL_URL}`;
     }
@@ -12,8 +22,6 @@ export const swaggerDocs = (app, port = 3000) => {
     }
     return `http://localhost:${port}`;
   };
-
-  const baseUrl = getBaseUrl();
 
   const options = {
     definition: {
@@ -63,17 +71,30 @@ export const swaggerDocs = (app, port = 3000) => {
     apis: ["./src/routes/*.js"],
   };
 
-  const specs = swaggerJsdoc(options);
-  
-  // Serve the JSON spec first (needed for HTML page)
-  app.get("/api-docs/swagger.json", (req, res) => {
-    res.setHeader("Content-Type", "application/json");
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.send(specs);
-  });
-  
   // For Vercel: Serve HTML page with Swagger UI from CDN
   app.get("/api-docs", (req, res) => {
+    // Get base URL from request
+    const baseUrl = getBaseUrl(req);
+    
+    // Generate specs with correct base URL
+    const requestOptions = {
+      ...options,
+      definition: {
+        ...options.definition,
+        servers: [
+          {
+            url: baseUrl,
+            description: process.env.VERCEL || process.env.VERCEL_URL ? "Production server" : "Development server"
+          }
+        ]
+      }
+    };
+    
+    const specs = swaggerJsdoc(requestOptions);
+    
+    // Embed the spec directly in the HTML to avoid CORS issues
+    const specsJson = JSON.stringify(specs).replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
+    
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -105,8 +126,9 @@ export const swaggerDocs = (app, port = 3000) => {
   <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-standalone-preset.js"></script>
   <script>
     window.onload = function() {
+      const spec = ${specsJson};
       const ui = SwaggerUIBundle({
-        url: "${baseUrl}/api-docs/swagger.json",
+        spec: spec,
         dom_id: '#swagger-ui',
         deepLinking: true,
         presets: [
@@ -125,6 +147,27 @@ export const swaggerDocs = (app, port = 3000) => {
 </html>`;
     res.setHeader("Content-Type", "text/html");
     res.send(html);
+  });
+  
+  // Serve the JSON spec for direct access
+  app.get("/api-docs/swagger.json", (req, res) => {
+    const baseUrl = getBaseUrl(req);
+    const requestOptions = {
+      ...options,
+      definition: {
+        ...options.definition,
+        servers: [
+          {
+            url: baseUrl,
+            description: process.env.VERCEL || process.env.VERCEL_URL ? "Production server" : "Development server"
+          }
+        ]
+      }
+    };
+    const specs = swaggerJsdoc(requestOptions);
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.send(specs);
   });
   
   // Handle trailing slash redirect
@@ -146,5 +189,5 @@ export const swaggerDocs = (app, port = 3000) => {
     app.get("/api-docs", swaggerUi.setup(specs, swaggerUiOptions));
   }
   
-  console.log(`Swagger docs available at ${baseUrl}/api-docs`);
+  console.log(`Swagger docs available at /api-docs`);
 };
