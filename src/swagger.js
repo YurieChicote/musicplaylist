@@ -10,10 +10,6 @@ export const swaggerDocs = (app, port = 3000) => {
       return `${protocol}://${req.headers.host}`;
     }
     // Fallback to environment variables
-    if (process.env.VERCEL_URL && !process.env.VERCEL_URL.includes('musicplaylist-seven')) {
-      // If it's a preview deployment, use production URL
-      return `https://musicplaylist-seven.vercel.app`;
-    }
     if (process.env.VERCEL_URL) {
       return `https://${process.env.VERCEL_URL}`;
     }
@@ -36,8 +32,8 @@ export const swaggerDocs = (app, port = 3000) => {
       },
       servers: [
         {
-          url: baseUrl,
-          description: process.env.VERCEL || process.env.VERCEL_URL ? "Production server" : "Development server"
+          url: "https://musicplaylist-seven.vercel.app",
+          description: "Production server"
         }
       ],
       components: {
@@ -71,7 +67,7 @@ export const swaggerDocs = (app, port = 3000) => {
     apis: ["./src/routes/*.js"],
   };
 
-  // For Vercel: Serve HTML page with Swagger UI from CDN
+  // For Vercel: Serve HTML page with Swagger UI from CDN (works in serverless)
   app.get("/api-docs", (req, res) => {
     // Get base URL from request
     const baseUrl = getBaseUrl(req);
@@ -149,6 +145,11 @@ export const swaggerDocs = (app, port = 3000) => {
     res.send(html);
   });
   
+  // Handle trailing slash redirect
+  app.get("/api-docs/", (req, res) => {
+    res.redirect("/api-docs");
+  });
+  
   // Serve the JSON spec for direct access
   app.get("/api-docs/swagger.json", (req, res) => {
     const baseUrl = getBaseUrl(req);
@@ -170,13 +171,9 @@ export const swaggerDocs = (app, port = 3000) => {
     res.send(specs);
   });
   
-  // Handle trailing slash redirect
-  app.get("/api-docs/", (req, res) => {
-    res.redirect("/api-docs");
-  });
-  
-  // Fallback: Try to use swagger-ui-express for local development
+  // Fallback: Use swagger-ui-express for local development only
   if (!process.env.VERCEL && !process.env.VERCEL_URL) {
+    const specs = swaggerJsdoc(options);
     const swaggerUiOptions = {
       customCss: '.swagger-ui .topbar { display: none }',
       customSiteTitle: "Music Playlist API Documentation",
